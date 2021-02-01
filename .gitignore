@@ -4,3 +4,5 @@ dist/
 .dist/
 .idea/
 *.egg-info/
+allure-report/
+allure-results/

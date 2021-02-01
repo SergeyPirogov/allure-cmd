@@ -7,6 +7,8 @@ import zipfile
 import click
 import requests
 
+allure_version = '2.13.8'
+
 
 class File(object):
 
@@ -51,7 +53,8 @@ class Archive(object):
 
 def download():
     response = requests.get(
-        'https://repo1.maven.org/maven2/io/qameta/allure/allure-commandline/2.13.8/allure-commandline-2.13.8.zip',
+        f'https://repo1.maven.org/maven2/io/qameta/allure/allure-commandline/{allure_version}'
+        f'/allure-commandline-{allure_version}.zip',
         stream=True)
     return File(response)
 
@@ -65,6 +68,34 @@ def save_file(file: File, directory: str):
     return Archive(archive_path)
 
 
+is_windows = sys.platform.startswith('win')
+dir_name = os.path.dirname(sys.path[0])
+root_path = os.path.join(dir_name, ".dist")
+allure_report_dir = "allure-report"
+
+binary_name = "allure"
+if is_windows:
+    binary_name = f"{binary_name}.bat"
+
+binary_path = f'{root_path}/allure-{allure_version}/bin/{binary_name}'
+
+
+def run(cmd):
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    print(stdout, stderr)
+
+
+def check_allure_binary():
+    if not os.path.exists(binary_path):
+        file = download()
+        archive = save_file(file, root_path)
+        archive.unpack(root_path)
+
+
 @click.group()
 @click.version_option("1.0.0")
 def main():
@@ -76,21 +107,28 @@ def main():
 @click.argument('dir', required=True)
 def generate(**kwargs):
     """generate report"""
-    dir_name = os.path.dirname(sys.path[0])
+    check_allure_binary()
+    run([binary_path, 'generate', f"{kwargs['dir']}", '-o', allure_report_dir, '--clean'])
 
-    root_path = os.path.join(f"{dir_name}", ".dist")
-    print(root_path)
 
-    file = download()
-    archive = save_file(file, root_path)
-    archive.unpack(root_path)
+@main.command()
+@click.argument('dir', required=True)
+def serve(**kwargs):
+    """serve report"""
+    check_allure_binary()
+    run([binary_path, 'serve', f"{kwargs['dir']}", '-o', allure_report_dir, '--clean'])
 
-    process = subprocess.Popen(
-        [f'{root_path}/allure-2.13.8/bin/allure.bat', 'generate', f"{kwargs['dir']}", '-o', 'allure-repost', '--clean'],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-    print(stdout, stderr)
+
+@main.command()
+@click.argument('dir', required=False)
+def open(**kwargs):
+    """serve report"""
+    report_dir = kwargs['dir']
+    if not report_dir:
+        report_dir = os.path.join(dir_name, allure_report_dir)
+
+    check_allure_binary()
+    run([binary_path, 'open', report_dir])
 
 
 if __name__ == "__main__":

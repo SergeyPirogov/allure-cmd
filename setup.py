@@ -20,8 +20,8 @@ dependency_links = [x.strip().replace('git+', '') for x in all_reqs \
                     if 'git+' not in x]
 setup(
     name='allure-cmd',
-    description='A simple commandline app for searching and looking up opensource vulnerabilities',
-    version='0.0.3',
+    description='A simple commandline app for Allure report generation',
+    version='0.0.5',
     packages=find_packages(),  # list of all packages
     install_requires=install_requires,
     python_requires='>=3.6',  # any python greater than 2.7
@@ -29,18 +29,17 @@ setup(
         [console_scripts]
         allure=allure.__main__:main
     ''',
-    author="Oyetoke Toby",
+    author="Sergey Pirogov",
     keyword="allure report generator",
     long_description="",
     long_description_content_type="text/markdown",
     license='MIT',
-    url='',
+    url='https://github.com/SergeyPirogov/allure-cmd',
     download_url='',
     dependency_links=dependency_links,
     author_email='semen4ik20@gmail.com',
     classifiers=[
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
     ]
