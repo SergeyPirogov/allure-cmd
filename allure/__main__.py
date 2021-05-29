@@ -6,8 +6,31 @@ import zipfile
 
 import click
 import requests
+import xml.etree.ElementTree as ET
 
 allure_version = '2.13.8'
+
+
+class XmlVersion(object):
+    """
+    Class for working with versions from xml file.
+    """
+    def __init__(self, file):
+        self.__tree = ET.fromstring(file)
+
+    def get_version(self):
+        """
+
+        :returns: Release version in string format.
+        """
+        return {child.tag: child.text for child in self.__tree.iter("release")}["release"]
+
+    def get_supported_versions(self):
+        """
+
+        :returns: Release versions in list format.
+        """
+        return {child.tag: [version.text for version in child] for child in self.__tree.iter("versions")}["versions"]
 
 
 class File(object):
@@ -51,12 +74,54 @@ class Archive(object):
         return archive.namelist()
 
 
-def download():
+def get_allure_realise_version():
+    """
+
+    :returns: Release version in string format from request.
+    """
     response = requests.get(
-        f'https://repo1.maven.org/maven2/io/qameta/allure/allure-commandline/{allure_version}'
-        f'/allure-commandline-{allure_version}.zip',
+        f'https://repo1.maven.org/maven2/io/qameta/allure/allure-commandline/maven-metadata.xml',
         stream=True)
-    return File(response)
+    return XmlVersion(response.text).get_version()
+
+
+def get_supported_versions():
+    """
+
+    :returns: Release versions in list format from request.
+    """
+    response = requests.get(
+        f'https://repo1.maven.org/maven2/io/qameta/allure/allure-commandline/maven-metadata.xml',
+        stream=True)
+    return XmlVersion(response.text).get_supported_versions()
+
+
+def is_allure_version_old(current_version: str, release_version: str):
+    """
+
+    :prop: current_version: Allure current version.
+    :prop: release_version: Allure release version from repository.
+    """
+    if int(current_version.replace(".", "")) < int(release_version.replace(".", "")):
+        return True
+    else:
+        return False
+
+
+def download(version=allure_version):
+    """
+
+    :prop: version: Allure version for downloading.
+    """
+    supported_versions = get_supported_versions()
+    if version in supported_versions:
+        response = requests.get(
+            f'https://repo1.maven.org/maven2/io/qameta/allure/allure-commandline/{version}'
+            f'/allure-commandline-{version}.zip',
+            stream=True)
+        return File(response)
+    else:
+        raise ValueError(f"Version {version} is not supported.\nSupported versions are : {get_supported_versions()}")
 
 
 def save_file(file: File, directory: str):
@@ -91,7 +156,9 @@ def run(cmd):
 
 def check_allure_binary():
     if not os.path.exists(binary_path):
-        file = download()
+        realise_version = get_allure_realise_version()
+        is_version_old = is_allure_version_old(allure_version, realise_version)
+        file = download(version="2.14.1") if is_version_old else download()
         archive = save_file(file, root_path)
         archive.unpack(root_path)
 
